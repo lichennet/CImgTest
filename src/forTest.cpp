@@ -6,10 +6,41 @@
 using namespace cimg_library;
 
 #include <iostream>
+using namespace std;
 
 #ifndef cimg_imagepath
 #define cimg_imagepath "img/"
 #endif
+
+
+// otsu
+template<typename T>
+T graythresh(const CImg<T> &img)
+{
+  T thres;
+  float w, u, variance, avg;
+  w = u = variance = avg = 0;
+
+  CImg<float> hist = img.get_histogram(256, 0, 255);
+  hist /= img.size();
+
+  cimg_forX(hist, x) {
+    avg += x*hist(x);
+  }
+  cimg_forX(hist, x) {
+    w += hist(x);
+    u += x*hist(x);
+    float t = avg*w - u;
+    float v = t*t / (w*(1-w));
+    if (v > variance) {
+      variance = v;
+      thres = x;
+    }
+  }
+
+  return thres;
+}
+
 
 // Main procedure
 //----------------
@@ -19,89 +50,53 @@ int main(int argc, char** argv) {
   cimg_usage("CImg test!");
 
 #if 0
-  // Construct a new image called 'edge' of size (2*factor,2*factor)
-  // and of type 'unsigned char'.
-  CImg<unsigned char> img(256, 256);
-  cimg_for_insideXY(img, x, y, 50) img(x, y) = x+y;
-  cimg_for_borderXY(img, x, y, 50) img(x, y) = x-y;
-  img.display();
-  while(1);
+  const CImg<unsigned char> src("img/lena.bmp");
+  CImg<unsigned char> dest(src.width(), src.height(), 1, 1);
+  dest.fill(0);
+
+  CImg<unsigned char> N(5,5);
+
+//  cimg_for_in5x5(src, 3, 3, src.width()-4, src.height()-4, x,y,0,0, N, unsigned char)
+  cimg_for5x5(src, x, y, 0, 0, N, unsigned char)
+	  dest(x, y, 0) = N.sum()/(5.0*5.0) + 0.5;
+
+  CImgList<unsigned char> visu (src, dest);
+  visu.display("2 imgs");
 #endif
+
+#if 1
+  const CImg<float> src("img/car3.jpg"), src_gray = src.get_norm().normalize(0, 255);
+  CImg<float> dest(src.width(), src.height(), 1, 1);
+  cimg_forXY(src_gray, x, y)
+    dest(x, y) = src_gray(x, y);
 
 #if 0
   CImg<unsigned char> N(5,5);
-#if 0
-  CImg<unsigned char> src = CImg<float>::get_load("img/parrot.ppm").norm().normalize(0,255), dest(src, false);
-
-  cimg_for3x3(src, x, y, 0, 0, N, unsigned char)
-	  dest(x, y, 0) = N.sum()/(3.0*3.0) + 0.5;
-
+  cimg_for5x5(src, x, y, 0, 0, N, unsigned char)
+    dest(x, y) = N.sum()/(5.0*5.0) + 0.5;
 #else
-  CImg<unsigned char> src("img/parrot.ppm"), dest(src, false);
-
-  cimg_forC(src, k)
-	cimg_for3x3(src, x, y, 0, k, N, unsigned char)
-	  dest(x, y, k) = N.sum()/(3.0*3.0) + 0.5;
-#endif
-  CImgList<unsigned char> visu (src, dest);
-  visu.display("2 imgs");
-  while(1);
+  dest.blur(1.0);
 #endif
 
-
-#if 0
-  CImg<unsigned char> src = CImg<float>::get_load("img/car.jpg").norm().normalize(0,255);
-  src.display();
-#else
-  const CImg<float> img("img/car.jpg"), res = img.get_equalize(256);
-  CImg<float> tmpimg = res;
-  CImgDisplay disp(tmpimg, "result", 0);
-
-  while (!disp.is_closed()) {
-
-      float kr, kg, kb;
-      kr = 0.8022;
-      kg = 2.8346;
-      kb = -1.0869;
-      {
-        cimg_forXY(res, x, y) {
-          float r, g, b;
-          float tmp;
-
-          r = res(x, y, 0);
-          g = res(x, y, 1);
-          b = res(x, y, 2);
-
-          tmp = kb*b + r*kr + g*kg;
-          tmpimg(x, y, 0) = tmp;
-          tmpimg(x, y, 1) = tmp;
-          tmpimg(x, y, 2) = tmp;
-        }
-
-
-        tmpimg.display(disp);
-        // Temporize event loop
-        cimg::wait(70);
-      }
+  // sobel
+  CImg<float> tmp(dest);
+//  cimg_for_inXY(dest, 1, 1, src.width()-2, src.height()-2, x,y) {
+  cimg_forXY(dest, x,y) {
+    int temp;
+    temp  = -1*dest(x-1,y-1) + 1*dest(x+1,y-1);
+    temp += -2*dest(x-1,y)   + 2*dest(x+1,y);
+    temp += -1*dest(x-1,y+1) + 1*dest(x+1,y+1);
+    tmp(x,y)  = abs(temp);
   }
+  dest = tmp.get_normalize(0,255);
 
-  std::cout << "end loop" << std::endl;
 
-  (img,res).display();
+  dest.threshold(graythresh(dest));
+
+
+  (src, tmp, dest).display();
 #endif
-
-  while (1);
-//  CImg<unsigned char> src("img/car.jpg");
-
 
   return 0;
 }
 
-
-// (*) Comments to the vocabulary used:
-// If (s,t) is the current pixel, and G=(Gs,Gt) is the gradient at (s,t),
-// then the _direction_pixel_ of (s,t) shall be the one of the eight neighbour pixels
-// of (s,t) in whose direction the gradient G shows.
-// The _contra_direction_pixel is the pixel in the opposite direction in which the gradient G shows.
-// The _corresponding_gradient_value_ of the pixel (x,y) with gradient G = (Gx,Gy)
-// shall be |Gx| + |Gy| ~=~ sqrt(Gx^2 + Gy^2).
