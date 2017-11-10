@@ -41,6 +41,18 @@ T graythresh(const CImg<T> &img)
   return thres;
 }
 
+CImg<>& do_close(CImg<> &img, const CImg<unsigned char> &kernel)
+{
+  img.dilate(kernel, kernel.width(), kernel.height());
+  img.erode (kernel, kernel.width(), kernel.height());
+  return img;
+}
+CImg<>& do_open(CImg<> &img, const CImg<unsigned char> &kernel)
+{
+  img.erode (kernel, kernel.width(), kernel.height());
+  img.dilate(kernel, kernel.width(), kernel.height());
+  return img;
+}
 
 // Main procedure
 //----------------
@@ -63,6 +75,20 @@ int main(int argc, char** argv) {
   CImgList<unsigned char> visu (src, dest);
   visu.display("2 imgs");
 #endif
+
+#if 0
+// CImg erode/dilate like matlab, 0 is foreground, 1 is background
+//  const CImg<unsigned char> img("img/erode.bmp"), kernel(3,3,1,1,"0",true);  // square
+  const CImg<unsigned char> img("img/erode.bmp"), kernel(3,3,1,1,  1,0,1,0,1,0,1,0,1);  // +
+  (img, img.get_erode(kernel,3,3)).display();
+//  (img, img.get_dilate(kernel,3,3)).display();
+
+  // outline get
+  const CImg<unsigned char> img("img/head.bmp"), kernel(3,3,1,1,"0",true);  // 3*3 square
+  const CImg<unsigned char> outline  = img - img.get_erode(kernel,3,3);
+  (img, outline).display();
+#endif
+
 
 #if 1
   const CImg<float> src("img/car3.jpg"), src_gray = src.get_norm().normalize(0, 255);
@@ -93,6 +119,10 @@ int main(int argc, char** argv) {
 
   dest.threshold(graythresh(dest));
 
+  // do_close
+  #define KERNEL_SIZE  11
+  const CImg<unsigned char> k(KERNEL_SIZE,KERNEL_SIZE,1,1,"0",true);
+  do_close(dest, k);
 
   (src, tmp, dest).display();
 #endif
