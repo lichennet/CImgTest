@@ -61,6 +61,17 @@ int main(int argc, char** argv) {
   // Usage of the program displayed at the command line
   cimg_usage("CImg test!");
 
+#if 1
+  const CImg<unsigned char> img(2,3,1,3,
+                // Bl,  Rd,  Gn,  Yl, Bk,  Wt,
+                    0, 255,   0, 255,  0, 255,  // R0, R1, R2, R3
+                    0,   0, 255, 255,  0, 255,  // G0, G1, G2, G3
+                  255,   0,   0,   0,  0, 255); // B0, B1, B2, B3
+
+  img.display();
+#endif
+
+
 #if 0
   const CImg<unsigned char> src("img/lena.bmp");
   CImg<unsigned char> dest(src.width(), src.height(), 1, 1);
